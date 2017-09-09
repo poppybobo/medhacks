@@ -12,7 +12,7 @@ except ImportError:
 
 # If modifying these scopes, delete your previously saved credentials
 # at ~/.credentials/calendar-python-quickstart.json
-SCOPES = 'https://www.googleapis.com/auth/calendar.readonly'
+SCOPES = 'https://www.googleapis.com/auth/calendar'
 CLIENT_SECRET_FILE = 'client_secret.json'
 APPLICATION_NAME = 'Google Calendar API Python Quickstart'
 
@@ -43,4 +43,14 @@ def get_credentials():
         else: # Needed only for compatibility with Python 2.6
             credentials = tools.run(flow, store)
         print('Storing credentials to ' + credential_path)
+
+    # if True:
+    #     flow = client.flow_from_clientsecrets(CLIENT_SECRET_FILE, SCOPES)
+    #     flow.user_agent = APPLICATION_NAME
+    #     if flags:
+    #         credentials = tools.run_flow(flow, store, flags)
+    #     else: # Needed only for compatibility with Python 2.6
+    #         credentials = tools.run(flow, store)
+    #     print('Storing credentials to ' + credential_path)
+
     return credentials
