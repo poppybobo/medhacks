@@ -9,24 +9,89 @@ import httplib2
 from apiclient import discovery
 from oauth2client import tools
 import datetime
-
-pytesseract.pytesseract.tesseract_cmd = '/usr/bin/tesseract'
-string = pytesseract.image_to_string(Image.open('image.jpg'))
+import base64
+from autocorrect import spell
+import re
 
 def grabContent(string):
     string = string.splitlines()
+    #for events
+    frequency = "RRULE:FREQ=DAILY"
+    time = "10"
     description = ""
-    title = ""
+
+    events = []
+
+    titlearray = ["take", "daily", "bedtime", "every", "needed", "mouth", "hours", "capsule", "tablespoon", "days", "up to", "one"]
+
     for i in string:
-        if "TAKE" in i:
+        print(i)
+        i = re.sub(r'([^\s\w]|_)+', '', i)
+        print(i, "/n")
+        if any(word in i.lower() for word in titlearray):
             description += i
-        elif "UP" in i:
-            description += i
-        elif "MG TABLETS" in i:
-            title = i
-    print(title)
+    twotime = ['twice']
+    threetime = ['times', '3', 'a day', "8", ]
+    fourtime = ['6']
+    night = ['night', 'bedtime']
+    tendays = ['10']
+
+    #TWO TIMES
+    if any(word in description.lower() for word in twotime):
+      events.append(getEvent(description, "08", frequency))
+      events.append(getEvent(description, "20", frequency))
+    #THREE TIMES
+    elif any(word in description.lower() for word in threetime):
+      events.append(getEvent(description, "08", frequency))
+      events.append(getEvent(description, "14", frequency))
+      events.append(getEvent(description, "20", frequency))
+      if '10' in description.lower():
+        frequency = "RRULE:FREQ=DAILY;COUNT=10"
+    #FOUR TIMES
+    elif any(word in description.lower() for word in fourtime):
+      events.append(getEvent(description, "08", frequency))
+      events.append(getEvent(description, "13", frequency))
+      events.append(getEvent(description, "18", frequency))
+      events.append(getEvent(description, "23", frequency))
+    #AT NIGHT
+    elif any(word in description.lower() for word in night):
+      description = "TAKE ONE TABLET EVERY NIGHT AT BEDTIME"
+      events.append(getEvent(description, "22", frequency)) 
+    else:
+      if len(description) < 10:
+        description = "TAKE ONE TABLET"
+      events.append(getEvent(description, "08", frequency))
+
     print(description)
-    return(title, description)
+    return events
+
+def getEvent(description, time, frequency):
+    time = int(time) - 6
+    starttime = "2017-09-10T" + str(time) + ":00:00-10:00"
+    endtime = "2017-09-10T" + str(time+1) + ":00:00-10:00"
+    event = {
+      'summary': description,
+      'description': 'Take your prescription pills',
+      'start': {
+        'dateTime': starttime,
+        'timeZone': 'EST',
+      },
+      'end': {
+        'dateTime': endtime,
+        'timeZone': 'EST',
+      },
+      'recurrence': [
+        frequency
+      ],
+      'reminders': {
+        'useDefault': False,
+        'overrides': [
+          {'method': 'email', 'minutes': 24 * 60},
+          {'method': 'popup', 'minutes': 10},
+        ],
+      },
+    }
+    return event
 
 def main():
     """Shows basic usage of the Google Calendar API.
@@ -45,47 +110,21 @@ def main():
         orderBy='startTime').execute()
     events = eventsResult.get('items', [])
 
-    if not events:
-        print('No upcoming events found.')
+    # if not events:
+    #     print('No upcoming events found.')
+    # for event in events:
+    #     start = event['start'].get('dateTime', event['start'].get('date'))
+    #     print(start, event['summary'])
+
+    pytesseract.pytesseract.tesseract_cmd = '/usr/bin/tesseract'
+    string = pytesseract.image_to_string(Image.open('test.jpg'))
+
+    events = grabContent(string)
+
     for event in events:
-        start = event['start'].get('dateTime', event['start'].get('date'))
-        print(start, event['summary'])
-
-    add = grabContent(string)
-
-    event = {
-      'summary': 'Google I/O 2015',
-      'location': '800 Howard St., San Francisco, CA 94103',
-      'description': 'A chance to hear more about Google\'s developer products.',
-      'start': {
-        'dateTime': '2017-09-09T09:00:00-07:00',
-        'timeZone': 'America/Los_Angeles',
-      },
-      'end': {
-        'dateTime': '2017-09-09T17:00:00-07:00',
-        'timeZone': 'America/Los_Angeles',
-      },
-      'recurrence': [
-        'RRULE:FREQ=DAILY;COUNT=2'
-      ],
-      'attendees': [
-        {'email': 'lpage@example.com'},
-        {'email': 'sbrin@example.com'},
-      ],
-      'reminders': {
-        'useDefault': False,
-        'overrides': [
-          {'method': 'email', 'minutes': 24 * 60},
-          {'method': 'popup', 'minutes': 10},
-        ],
-      },
-    }
-
-    event = service.events().insert(calendarId='primary', body=event).execute()
-    print('Event created:', event.get('htmlLink'))
-    print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-
-    print("hi")
+      event = service.events().insert(calendarId='primary', body=event).execute()
+      print('Event created:', event.get('htmlLink'))
+      print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 
 if __name__ == '__main__':
     main()
